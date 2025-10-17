@@ -34,11 +34,15 @@ db_app = typer.Typer(help="Database management commands")
 llm_app = typer.Typer(help="LLM and model management commands")
 query_app = typer.Typer(help="Data query and analysis commands")
 pathogen_app = typer.Typer(help="Pathogen management commands")
+sample_app = typer.Typer(help="Water sample collection commands")
+export_app = typer.Typer(help="Data export commands")
 app.add_typer(agent_app, name="agent")
 app.add_typer(db_app, name="db")
 app.add_typer(llm_app, name="llm")
 app.add_typer(query_app, name="query")
 app.add_typer(pathogen_app, name="pathogen")
+app.add_typer(sample_app, name="sample")
+app.add_typer(export_app, name="export")
 
 
 @app.callback()
@@ -272,6 +276,76 @@ Rationale:
 #     console.print("Interactive menu has been removed. Use --help to see available commands.")
 
 
+@app.command("export")
+def export_data(
+    format: str = typer.Option("json", "--format", "-f", help="Export format (json/csv)"),
+    output_dir: str = typer.Option("exports", "--output", "-o", help="Output directory"),
+):
+    """Export pathogen detection data."""
+    console.print(f"[bold blue]Exporting Data[/bold blue]")
+    
+    try:
+        from .utils.export import DataExporter
+        from .storage.pathogen_storage import PathogenStorage
+        
+        exporter = DataExporter(output_dir)
+        storage = PathogenStorage()
+        
+        pathogens = storage.list_pathogens(limit=1000)
+        data = [p.__dict__ for p in pathogens if hasattr(p, '__dict__')]
+        
+        if format == "csv":
+            filepath = exporter.export_to_csv(data)
+        else:
+            filepath = exporter.export_to_json(data)
+        
+        console.print(f"[bold green]Data exported to: {filepath}[/bold green]")
+        storage.close()
+    except Exception as e:
+        console.print(f"[bold red]Export failed: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@app.command("risk-assess")
+def risk_assessment(
+    pathogen_type: str = typer.Argument(..., help="Pathogen type"),
+    concentration: float = typer.Argument(..., help="Concentration (CFU/100mL)"),
+    location: str = typer.Argument(..., help="Sample location"),
+    population: int = typer.Option(None, "--population", "-p", help="Population exposed"),
+):
+    """Perform risk assessment for pathogen detection."""
+    console.print(f"[bold blue]Risk Assessment[/bold blue]")
+    
+    try:
+        from .services.risk_assessment import RiskAssessmentService, RiskLevel
+        from .models.pathogen import PathogenType
+        
+        service = RiskAssessmentService()
+        pathogen_type_enum = PathogenType(pathogen_type.lower())
+        
+        assessment = service.assess_risk(
+            pathogen_type=pathogen_type_enum,
+            concentration=concentration,
+            location=location,
+            population_exposed=population
+        )
+        
+        console.print(f"\n[bold]Risk Level:[/bold] {assessment['risk_level'].upper()}")
+        console.print(f"[bold]Location:[/bold] {assessment['location']}")
+        console.print(f"[bold]Concentration:[/bold] {assessment['concentration']} CFU/100mL")
+        
+        if assessment.get('requires_action'):
+            console.print("\n[bold red]IMMEDIATE ACTION REQUIRED[/bold red]")
+        
+        console.print("\n[bold]Recommendations:[/bold]")
+        for rec in assessment['recommendations']:
+            console.print(f"  - {rec}")
+        
+    except Exception as e:
+        console.print(f"[bold red]Assessment failed: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
 @app.command("status")
 def status_command(json_output: bool = typer.Option(False, "--json", help="Output status as JSON")):
     """Show current configuration, database path, and environment info.
@@ -415,3 +489,251 @@ def pathogen_stats():
         raise typer.Exit(1)
     finally:
         storage.close()
+
+@sample_app.command("collect")
+def sample_collect(
+    location: str = typer.Option(..., "--location", "-l", help="Sample collection location"),
+    source_type: str = typer.Option(..., "--source", "-s", help="Source type (drinking_water/wastewater/surface_water)"),
+    latitude: Optional[float] = typer.Option(None, "--lat", help="GPS latitude"),
+    longitude: Optional[float] = typer.Option(None, "--lon", help="GPS longitude"),
+    temperature: Optional[float] = typer.Option(None, "--temp", "-t", help="Water temperature in Celsius"),
+    ph: Optional[float] = typer.Option(None, "--ph", help="pH level"),
+    turbidity: Optional[float] = typer.Option(None, "--turbidity", help="Turbidity in NTU"),
+    notes: Optional[str] = typer.Option(None, "--notes", "-n", help="Additional notes"),
+):
+    """Collect and record a new water sample."""
+    from .storage.water_sample_storage import WaterSampleStorage
+    from .models.pathogen import WaterSampleCreate, SampleSource
+    from .utils.logging import configure_logging
+    from datetime import datetime, timezone
+
+    configure_logging(debug=get_settings().debug)
+    storage = WaterSampleStorage()
+
+    try:
+        sample = WaterSampleCreate(
+            location=location,
+            source_type=SampleSource(source_type),
+            collection_date=datetime.now(timezone.utc),
+            latitude=latitude,
+            longitude=longitude,
+            temperature_celsius=temperature,
+            ph_level=ph,
+            turbidity_ntu=turbidity,
+            notes=notes
+        )
+
+        created = storage.create_sample(sample)
+
+        console.print(f"\n[bold green]Sample Collected Successfully![/bold green]")
+        console.print(f"Sample ID: {created.id}")
+        console.print(f"Location: {created.location}")
+        console.print(f"Source: {created.source_type.value}")
+
+    except Exception as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        storage.close()
+
+
+@sample_app.command("list")
+def sample_list(
+    limit: int = typer.Option(20, "--limit", "-l", help="Number of samples to show"),
+    source_type: Optional[str] = typer.Option(None, "--source", "-s", help="Filter by source type"),
+):
+    """List water samples."""
+    from .storage.water_sample_storage import WaterSampleStorage
+    from .models.pathogen import SampleSource
+    from .utils.logging import configure_logging
+    from datetime import datetime
+
+    configure_logging(debug=get_settings().debug)
+    storage = WaterSampleStorage()
+
+    try:
+        st = SampleSource(source_type) if source_type else None
+        samples = storage.list_samples(limit=limit, source_type=st)
+
+        if not samples:
+            console.print("[yellow]No samples found[/yellow]")
+            return
+
+        table = Table(title=f"Water Samples ({len(samples)} records)", show_header=True, header_style="bold cyan")
+        table.add_column("Location", style="green")
+        table.add_column("Source", style="blue")
+        table.add_column("Temp (°C)", justify="right")
+        table.add_column("pH", justify="right")
+
+        for s in samples:
+            table.add_row(
+                s.location[:30],
+                s.source_type.value if hasattr(s.source_type, 'value') else str(s.source_type),
+                f"{s.temperature_celsius:.1f}" if s.temperature_celsius else "N/A",
+                f"{s.ph_level:.1f}" if s.ph_level else "N/A"
+            )
+
+        console.print(table)
+
+    except Exception as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        storage.close()
+
+
+@sample_app.command("stats")
+def sample_stats():
+    """Show water sample statistics."""
+    from .storage.water_sample_storage import WaterSampleStorage
+    from .utils.logging import configure_logging
+
+    configure_logging(debug=get_settings().debug)
+    storage = WaterSampleStorage()
+
+    try:
+        stats = storage.get_sample_stats()
+
+        console.print("\n[bold cyan]Water Sample Statistics[/bold cyan]")
+        console.print(f"[bold]Total Samples:[/bold] {stats['total_samples']}")
+
+        if stats['by_source_type']:
+            console.print("\n[bold]By Source Type:[/bold]")
+            for source, count in stats['by_source_type'].items():
+                console.print(f"  {source}: {count}")
+
+        if stats['average_temperature_celsius']:
+            console.print(f"\n[bold]Average Temperature:[/bold] {stats['average_temperature_celsius']}°C")
+        if stats['average_ph_level']:
+            console.print(f"[bold]Average pH:[/bold] {stats['average_ph_level']}")
+
+    except Exception as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        storage.close()
+
+
+@export_app.command("pathogens")
+def export_pathogens(
+    output: str = typer.Option(..., "--output", "-o", help="Output file path"),
+    format: str = typer.Option("json", "--format", "-f", help="Export format (json/csv)"),
+    pathogen_type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by type"),
+):
+    """Export pathogen data to JSON or CSV."""
+    from .utils.export import DataExporter
+    from .models.pathogen import PathogenType
+    from .utils.logging import configure_logging
+
+    configure_logging(debug=get_settings().debug)
+    exporter = DataExporter()
+
+    try:
+        pt = PathogenType(pathogen_type) if pathogen_type else None
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Exporting pathogens...", total=None)
+
+            if format.lower() == "json":
+                count = exporter.export_pathogens_to_json(output, pt)
+            elif format.lower() == "csv":
+                count = exporter.export_pathogens_to_csv(output, pt)
+            else:
+                console.print(f"[bold red]Invalid format: {format}. Use 'json' or 'csv'[/bold red]")
+                raise typer.Exit(1)
+
+            progress.update(task, completed=True)
+
+        console.print(f"[bold green]Exported {count} pathogens to {output}[/bold green]")
+
+    except Exception as e:
+        console.print(f"[bold red]Export failed: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        exporter.close()
+
+
+@export_app.command("samples")
+def export_samples(
+    output: str = typer.Option(..., "--output", "-o", help="Output file path"),
+    format: str = typer.Option("json", "--format", "-f", help="Export format (json/csv)"),
+    source_type: Optional[str] = typer.Option(None, "--source", "-s", help="Filter by source type"),
+    location: Optional[str] = typer.Option(None, "--location", "-l", help="Filter by location"),
+):
+    """Export water sample data to JSON or CSV."""
+    from .utils.export import DataExporter
+    from .models.pathogen import SampleSource
+    from .utils.logging import configure_logging
+
+    configure_logging(debug=get_settings().debug)
+    exporter = DataExporter()
+
+    try:
+        st = SampleSource(source_type) if source_type else None
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Exporting water samples...", total=None)
+
+            if format.lower() == "json":
+                count = exporter.export_water_samples_to_json(output, st, location)
+            elif format.lower() == "csv":
+                count = exporter.export_water_samples_to_csv(output, st, location)
+            else:
+                console.print(f"[bold red]Invalid format: {format}. Use 'json' or 'csv'[/bold red]")
+                raise typer.Exit(1)
+
+            progress.update(task, completed=True)
+
+        console.print(f"[bold green]Exported {count} water samples to {output}[/bold green]")
+
+    except Exception as e:
+        console.print(f"[bold red]Export failed: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        exporter.close()
+
+
+@export_app.command("all")
+def export_all(
+    output_dir: str = typer.Option("exports", "--output", "-o", help="Output directory"),
+):
+    """Export all data (pathogens and water samples) to JSON and CSV files."""
+    from .utils.export import DataExporter
+    from .utils.logging import configure_logging
+
+    configure_logging(debug=get_settings().debug)
+    exporter = DataExporter()
+
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Exporting full database...", total=None)
+
+            result = exporter.export_full_database(output_dir)
+
+            progress.update(task, completed=True)
+
+        console.print(f"\n[bold green]Full database exported successfully![/bold green]")
+        console.print(f"Output directory: {result['output_directory']}")
+        console.print(f"Pathogens exported: {result['pathogens_exported']}")
+        console.print(f"Water samples exported: {result['water_samples_exported']}")
+        console.print(f"\nFiles created:")
+        for file in result['files_created']:
+            console.print(f"  - {file}")
+
+    except Exception as e:
+        console.print(f"[bold red]Export failed: {e}[/bold red]")
+        raise typer.Exit(1)
+    finally:
+        exporter.close()

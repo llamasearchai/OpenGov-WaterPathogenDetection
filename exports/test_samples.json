@@ -1,0 +1,47 @@
+[
+  {
+    "location": "Test Location 3",
+    "latitude": null,
+    "longitude": null,
+    "source_type": "drinking_water",
+    "collection_date": "2025-10-17T20:48:10.374049Z",
+    "temperature_celsius": 20.0,
+    "ph_level": 7.2,
+    "turbidity_ntu": null,
+    "dissolved_oxygen_mg_l": null,
+    "notes": null,
+    "id": "9058e9e7-0d5d-42f2-ae0d-e787400d7cdb",
+    "created_at": "2025-10-17T20:48:10.374055Z",
+    "updated_at": "2025-10-17T20:48:10.374056Z"
+  },
+  {
+    "location": "Test Location 2",
+    "latitude": null,
+    "longitude": null,
+    "source_type": "drinking_water",
+    "collection_date": "2025-10-17T20:48:10.373709Z",
+    "temperature_celsius": 19.0,
+    "ph_level": 7.1,
+    "turbidity_ntu": null,
+    "dissolved_oxygen_mg_l": null,
+    "notes": null,
+    "id": "3b4e07e3-a514-467d-a875-2d1d516513eb",
+    "created_at": "2025-10-17T20:48:10.373719Z",
+    "updated_at": "2025-10-17T20:48:10.373720Z"
+  },
+  {
+    "location": "Test Location 1",
+    "latitude": null,
+    "longitude": null,
+    "source_type": "drinking_water",
+    "collection_date": "2025-10-17T20:48:10.373295Z",
+    "temperature_celsius": 18.0,
+    "ph_level": 7.0,
+    "turbidity_ntu": null,
+    "dissolved_oxygen_mg_l": null,
+    "notes": null,
+    "id": "49a46443-5603-45c5-b707-83cfd67d06a1",
+    "created_at": "2025-10-17T20:48:10.373312Z",
+    "updated_at": "2025-10-17T20:48:10.373313Z"
+  }
+]

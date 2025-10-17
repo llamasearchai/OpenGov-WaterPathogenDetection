@@ -11,6 +11,9 @@ OpenGov-WaterPathogenDetection is a production-grade Python system designed to s
 ## Key Features
 
 - **AI-Powered Analysis**: Integrated OpenAI and Ollama support for intelligent pathogen analysis
+- **Risk Assessment System**: Real-time pathogen risk assessment with automated alerting and trend analysis
+- **Data Export & Reporting**: Multi-format exports (JSON, CSV) with compliance reporting
+- **Water Sample Tracking**: Comprehensive sample management with location and pathogen correlation
 - **Regulatory Compliance**: Built-in compliance checking and reporting
 - **Multi-Provider LLM Support**: Graceful fallback between OpenAI, Ollama, and local models
 - **Production-Ready**: Complete with testing, documentation, and deployment tools

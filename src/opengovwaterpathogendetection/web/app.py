@@ -72,6 +72,10 @@ def get_pathogen_storage():
     from ..storage.pathogen_storage import PathogenStorage
     return PathogenStorage()
 
+def get_water_sample_storage():
+    from ..storage.water_sample_storage import WaterSampleStorage
+    return WaterSampleStorage()
+
 
 # Routes
 
@@ -250,6 +254,105 @@ async def get_pathogen_stats(
     try:
         stats = storage.get_pathogen_stats()
         return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        storage.close()
+
+
+@app.post("/api/water-samples")
+async def create_water_sample(
+    sample: dict,
+    storage=Depends(get_water_sample_storage)
+):
+    """Create a new water sample record."""
+    try:
+        from ..models.pathogen import WaterSampleCreate, SampleSource
+        from datetime import datetime, timezone
+
+        # Convert dict to WaterSampleCreate model
+        sample_create = WaterSampleCreate(
+            location=sample["location"],
+            latitude=sample.get("latitude"),
+            longitude=sample.get("longitude"),
+            source_type=SampleSource(sample["source_type"]),
+            collection_date=datetime.fromisoformat(sample["collection_date"]) if "collection_date" in sample else datetime.now(timezone.utc),
+            temperature_celsius=sample.get("temperature_celsius"),
+            ph_level=sample.get("ph_level"),
+            turbidity_ntu=sample.get("turbidity_ntu"),
+            dissolved_oxygen_mg_l=sample.get("dissolved_oxygen_mg_l"),
+            notes=sample.get("notes")
+        )
+        created = storage.create_sample(sample_create)
+        return created.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"create_water_sample_failed: {e}")
+    finally:
+        storage.close()
+
+
+@app.get("/api/water-samples")
+async def list_water_samples(
+    limit: int = Query(20, ge=1, le=100, description="Number of samples to return"),
+    offset: int = Query(0, ge=0, description="Number of samples to skip"),
+    source_type: Optional[str] = Query(None, description="Filter by source type (drinking_water/wastewater/etc)"),
+    location: Optional[str] = Query(None, description="Filter by location"),
+    storage=Depends(get_water_sample_storage)
+):
+    """List water samples with optional filtering."""
+    try:
+        from ..models.pathogen import SampleSource
+        st = SampleSource(source_type) if source_type else None
+        samples = storage.list_samples(limit=limit, offset=offset, source_type=st, location=location)
+        return [s.model_dump() for s in samples]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        storage.close()
+
+
+@app.get("/api/water-samples/{sample_id}")
+async def get_water_sample(
+    sample_id: str,
+    storage=Depends(get_water_sample_storage)
+):
+    """Get a specific water sample by ID."""
+    try:
+        sample = storage.get_sample(sample_id)
+        if not sample:
+            raise HTTPException(status_code=404, detail="Water sample not found")
+        return sample.model_dump()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        storage.close()
+
+
+@app.get("/api/water-sample-stats")
+async def get_water_sample_stats(
+    storage=Depends(get_water_sample_storage)
+):
+    """Get water sample statistics."""
+    try:
+        stats = storage.get_sample_stats()
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        storage.close()
+
+
+@app.get("/api/water-samples/search/{query}")
+async def search_water_samples(
+    query: str,
+    storage=Depends(get_water_sample_storage)
+):
+    """Search water samples by location or notes."""
+    try:
+        samples = storage.search_samples(query)
+        return [s.model_dump() for s in samples]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
