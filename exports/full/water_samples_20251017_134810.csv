@@ -1,4 +1,0 @@
-id,location,latitude,longitude,source_type,collection_date,temperature_celsius,ph_level,turbidity_ntu,dissolved_oxygen_mg_l,notes,created_at,updated_at
-9058e9e7-0d5d-42f2-ae0d-e787400d7cdb,Test Location 3,,,drinking_water,2025-10-17 20:48:10.374049+00:00,20.0,7.2,,,,2025-10-17 20:48:10.374055+00:00,2025-10-17 20:48:10.374056+00:00
-3b4e07e3-a514-467d-a875-2d1d516513eb,Test Location 2,,,drinking_water,2025-10-17 20:48:10.373709+00:00,19.0,7.1,,,,2025-10-17 20:48:10.373719+00:00,2025-10-17 20:48:10.373720+00:00
-49a46443-5603-45c5-b707-83cfd67d06a1,Test Location 1,,,drinking_water,2025-10-17 20:48:10.373295+00:00,18.0,7.0,,,,2025-10-17 20:48:10.373312+00:00,2025-10-17 20:48:10.373313+00:00
