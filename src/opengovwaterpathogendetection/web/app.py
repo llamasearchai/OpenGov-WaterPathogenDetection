@@ -1,7 +1,7 @@
 """FastAPI web application for OpenGov-WaterPathogenDetection."""
 
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Depends, Query
@@ -372,6 +372,105 @@ async def get_stats(
             "items_count": 0,
             "last_updated": "2024-01-15T10:00:00"
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/compliance/check")
+async def check_compliance_endpoint(
+    pathogen_type: str,
+    pathogen_name: str,
+    concentration: float,
+    standard: str = "epa_drinking_water"
+):
+    """Check regulatory compliance for pathogen detection."""
+    try:
+        from ..services.compliance import ComplianceService, RegulatoryStandard
+        from ..models.pathogen import PathogenType
+        
+        service = ComplianceService()
+        result = service.check_compliance(
+            pathogen_type=PathogenType(pathogen_type),
+            pathogen_name=pathogen_name,
+            concentration=concentration,
+            standard=RegulatoryStandard(standard)
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/analytics/trends")
+async def analyze_trends_endpoint(
+    detection_data: List[Dict],
+    time_window_days: int = 30
+):
+    """Analyze temporal trends in pathogen detection."""
+    try:
+        from ..services.analytics import AnalyticsService
+        
+        service = AnalyticsService()
+        analysis = service.analyze_temporal_trends(detection_data, time_window_days)
+        return analysis
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/analytics/outbreak-risk")
+async def predict_outbreak_endpoint(
+    recent_detections: List[Dict]
+):
+    """Predict outbreak risk based on recent detections."""
+    try:
+        from ..services.analytics import AnalyticsService
+        
+        service = AnalyticsService()
+        prediction = service.predict_outbreak_risk(recent_detections)
+        return prediction
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/notifications/alert")
+async def send_alert_endpoint(
+    title: str,
+    message: str,
+    priority: str = "medium",
+    recipients: Optional[List[str]] = None
+):
+    """Send notification alert."""
+    try:
+        from ..services.notifications import NotificationService, NotificationPriority
+        
+        service = NotificationService()
+        result = service.send_alert(
+            title=title,
+            message=message,
+            priority=NotificationPriority(priority),
+            recipients=recipients or []
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/samples")
+async def list_water_samples(
+    limit: int = Query(100, ge=1, le=1000),
+    location: Optional[str] = None
+):
+    """List water samples."""
+    try:
+        from ..storage.water_sample_storage import WaterSampleStorage
+        
+        storage = WaterSampleStorage()
+        samples = storage.list_samples(limit=limit, location=location)
+        result = [{"sample_id": s.sample_id, "location": s.location, 
+                   "collection_date": s.collection_date, "sample_type": s.sample_type,
+                   "temperature": s.temperature, "ph_level": s.ph_level}
+                  for s in samples]
+        storage.close()
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

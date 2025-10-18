@@ -306,12 +306,132 @@ def export_data(
         raise typer.Exit(1)
 
 
+@app.command("import-samples")
+def import_samples(
+    filepath: str = typer.Argument(..., help="Path to CSV file"),
+    skip_errors: bool = typer.Option(True, "--skip-errors/--no-skip-errors", help="Skip rows with errors"),
+):
+    """Import water samples from CSV file."""
+    console.print(f"[bold blue]Importing Samples from CSV[/bold blue]")
+    
+    try:
+        from .utils.batch_import import BatchImporter
+        
+        importer = BatchImporter()
+        successful, failed, errors = importer.import_samples_from_csv(filepath, skip_errors)
+        
+        console.print(f"\n[bold green]Import Complete[/bold green]")
+        console.print(f"Successful: {successful}")
+        console.print(f"Failed: {failed}")
+        
+        if errors:
+            console.print("\n[bold yellow]Errors:[/bold yellow]")
+            for error in errors[:10]:  # Show first 10 errors
+                console.print(f"  - {error}")
+        
+        importer.close()
+    except Exception as e:
+        console.print(f"[bold red]Import failed: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@app.command("check-compliance")
+def check_compliance(
+    pathogen_type: str = typer.Argument(..., help="Pathogen type"),
+    pathogen_name: str = typer.Argument(..., help="Pathogen name"),
+    concentration: float = typer.Argument(..., help="Concentration"),
+    standard: str = typer.Option("epa_drinking_water", "--standard", "-s", help="Regulatory standard"),
+):
+    """Check regulatory compliance for pathogen detection."""
+    console.print(f"[bold blue]Compliance Check[/bold blue]")
+    
+    try:
+        from .services.compliance import ComplianceService, RegulatoryStandard
+        from .models.pathogen import PathogenType
+        
+        service = ComplianceService()
+        pathogen_type_enum = PathogenType(pathogen_type.lower())
+        standard_enum = RegulatoryStandard(standard)
+        
+        result = service.check_compliance(
+            pathogen_type=pathogen_type_enum,
+            pathogen_name=pathogen_name,
+            concentration=concentration,
+            standard=standard_enum
+        )
+        
+        status = result['status'].upper()
+        color = "green" if result['compliant'] else "red"
+        
+        console.print(f"\n[bold]Compliance Status:[/bold] [{color}]{status}[/{color}]")
+        console.print(f"[bold]Pathogen:[/bold] {pathogen_name}")
+        console.print(f"[bold]Concentration:[/bold] {concentration}")
+        console.print(f"[bold]Regulatory Limit:[/bold] {result['regulatory_limit']}")
+        
+        if result['exceedance_percent']:
+            console.print(f"[bold]Exceedance:[/bold] {result['exceedance_percent']}%")
+        
+        console.print("\n[bold]Required Actions:[/bold]")
+        for action in result['actions_required']:
+            console.print(f"  - {action}")
+        
+    except Exception as e:
+        console.print(f"[bold red]Compliance check failed: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@app.command("analyze-trends")
+def analyze_trends(
+    sample_id_pattern: str = typer.Option(None, "--pattern", "-p", help="Sample ID pattern to analyze"),
+    days: int = typer.Option(30, "--days", "-d", help="Days to analyze"),
+):
+    """Analyze temporal trends in pathogen detection."""
+    console.print(f"[bold blue]Trend Analysis[/bold blue]")
+    
+    try:
+        from .services.analytics import AnalyticsService
+        from .storage.water_sample_storage import WaterSampleStorage
+        
+        # Get sample data (simplified for demo)
+        storage = WaterSampleStorage()
+        samples = storage.list_samples(limit=1000)
+        
+        # Convert to detection data format
+        detection_data = []
+        for sample in samples:
+            if hasattr(sample, 'pathogen_concentration') and sample.pathogen_concentration:
+                detection_data.append({
+                    'timestamp': sample.test_date or sample.collection_date,
+                    'concentration': sample.pathogen_concentration,
+                    'location': sample.location
+                })
+        
+        if not detection_data:
+            console.print("[yellow]No detection data available[/yellow]")
+            storage.close()
+            return
+        
+        analytics = AnalyticsService()
+        analysis = analytics.analyze_temporal_trends(detection_data, days)
+        
+        console.print(f"\n[bold]Trend:[/bold] {analysis['trend'].replace('_', ' ').title()}")
+        console.print(f"[bold]Total Detections:[/bold] {analysis['total_detections']}")
+        console.print(f"[bold]Average Concentration:[/bold] {analysis['average_concentration']:.2f}")
+        console.print(f"[bold]Alert Level:[/bold] {analysis['alert_level'].upper()}")
+        
+        storage.close()
+    except Exception as e:
+        console.print(f"[bold red]Analysis failed: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
 @app.command("risk-assess")
 def risk_assessment(
     pathogen_type: str = typer.Argument(..., help="Pathogen type"),
     concentration: float = typer.Argument(..., help="Concentration (CFU/100mL)"),
     location: str = typer.Argument(..., help="Sample location"),
     population: int = typer.Option(None, "--population", "-p", help="Population exposed"),
+    send_alert: bool = typer.Option(False, "--alert", help="Send notification alert"),
 ):
     """Perform risk assessment for pathogen detection."""
     console.print(f"[bold blue]Risk Assessment[/bold blue]")
@@ -340,6 +460,13 @@ def risk_assessment(
         console.print("\n[bold]Recommendations:[/bold]")
         for rec in assessment['recommendations']:
             console.print(f"  - {rec}")
+        
+        # Send notification if requested
+        if send_alert:
+            from .services.notifications import NotificationService
+            notif_service = NotificationService()
+            notif_service.send_risk_alert(assessment)
+            console.print("\n[bold green]Alert notification sent[/bold green]")
         
     except Exception as e:
         console.print(f"[bold red]Assessment failed: {e}[/bold red]")
