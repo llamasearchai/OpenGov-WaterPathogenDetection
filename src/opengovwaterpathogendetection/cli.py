@@ -473,6 +473,78 @@ def risk_assessment(
         raise typer.Exit(1)
 
 
+@app.command("demo")
+def run_demo(
+    generate_data: bool = typer.Option(True, "--generate/--no-generate", help="Generate demo data"),
+    num_samples: int = typer.Option(50, "--samples", "-n", help="Number of samples to generate"),
+):
+    """Run complete system demonstration with mock data."""
+    console.print("[bold cyan]OpenGov-WaterPathogenDetection - Complete Demo[/bold cyan]")
+    console.print()
+    
+    try:
+        from .utils.demo import DemoDataGenerator, DemoWorkflow
+        from .core.database import DatabaseManager
+        
+        # Initialize database
+        console.print("[bold blue]Step 1: Initializing Database[/bold blue]")
+        db = DatabaseManager()
+        db.initialize(drop_existing=True)
+        console.print("[green]✓ Database initialized[/green]")
+        console.print()
+        
+        if generate_data:
+            # Generate demo data
+            console.print(f"[bold blue]Step 2: Generating Demo Data ({num_samples} samples)[/bold blue]")
+            generator = DemoDataGenerator()
+            
+            pathogen_ids = generator.generate_pathogens()
+            console.print(f"[green]✓ Created {len(pathogen_ids)} pathogens[/green]")
+            
+            sample_ids = generator.generate_water_samples(num_samples=num_samples)
+            console.print(f"[green]✓ Created {len(sample_ids)} water samples[/green]")
+            
+            generator.close()
+            console.print()
+        
+        # Run complete workflow demo
+        console.print("[bold blue]Step 3: Running Complete Workflow[/bold blue]")
+        workflow = DemoWorkflow()
+        results = workflow.run_complete_demo()
+        
+        console.print()
+        console.print("[bold green]Demo Results:[/bold green]")
+        console.print("=" * 60)
+        
+        for wf in results["workflows"]:
+            status_icon = "✓" if wf["status"] == "success" else "✗"
+            console.print(f"\n[bold]{status_icon} {wf['name']}[/bold]")
+            console.print(f"   {wf['message']}")
+            
+            # Show additional details
+            for key, value in wf.items():
+                if key not in ["name", "status", "message"]:
+                    console.print(f"   {key}: {value}")
+        
+        console.print()
+        console.print("=" * 60)
+        console.print("[bold green]Demo Complete![/bold green]")
+        console.print()
+        console.print("[bold cyan]Try these commands:[/bold cyan]")
+        console.print("  • opengov-waterpathogendetection export --format csv")
+        console.print("  • opengov-waterpathogendetection analyze-trends --days 30")
+        console.print("  • opengov-waterpathogendetection check-compliance bacteria 'E. coli' 10")
+        console.print("  • opengov-waterpathogendetection serve")
+        
+        workflow.close()
+        
+    except Exception as e:
+        console.print(f"[bold red]Demo failed: {e}[/bold red]")
+        import traceback
+        console.print(f"[red]{traceback.format_exc()}[/red]")
+        raise typer.Exit(1)
+
+
 @app.command("status")
 def status_command(json_output: bool = typer.Option(False, "--json", help="Output status as JSON")):
     """Show current configuration, database path, and environment info.
