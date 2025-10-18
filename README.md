@@ -7,7 +7,7 @@
 
 OpenGov-WaterPathogenDetection is a production-grade Python system for comprehensive water pathogen detection and surveillance. Designed for California public health laboratories, the system integrates AI/ML capabilities with regulatory compliance workflows to monitor waterborne pathogens and detect potential outbreaks.
 
-## 🎯 Quick Start
+## Quick Start
 
 ```bash
 # Install
@@ -23,7 +23,7 @@ opengov-waterpathogendetection serve
 # Visit http://localhost:8000/docs
 ```
 
-## ⚡ Key Features
+## Key Features
 
 ### Professional Tools
 - **Batch Sample Import** - Import 1000+ samples from CSV in seconds
@@ -41,7 +41,7 @@ opengov-waterpathogendetection serve
 - **CLI Tool** - 10 powerful commands
 - **Complete Demo** - One-command demonstration
 
-## 📚 Documentation
+## Documentation
 
 - [Quick Start Guide](docs/QUICKSTART.md) - Get started in 5 minutes
 - [Feature List](docs/FEATURES_COMPLETE_v1.2.md) - Complete feature documentation
@@ -50,7 +50,7 @@ opengov-waterpathogendetection serve
 - [Contributing](CONTRIBUTING.md) - Contribution guidelines
 - [API Documentation](http://localhost:8000/docs) - Interactive API docs (when server running)
 
-## 💻 CLI Commands
+## CLI Commands
 
 ```bash
 # Demo & Setup
@@ -72,7 +72,7 @@ opengov-waterpathogendetection serve             # Start API server
 opengov-waterpathogendetection status            # System status
 ```
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
@@ -84,7 +84,7 @@ pytest tests/ --cov=opengovwaterpathogendetection
 # Result: 222/222 tests passing (100%)
 ```
 
-## 🚀 Production Deployment
+## Production Deployment
 
 ### Requirements
 - Python 3.11+
@@ -114,7 +114,7 @@ opengov-waterpathogendetection db init
 opengov-waterpathogendetection serve --host 0.0.0.0 --port 8000
 ```
 
-## 📊 System Architecture
+## System Architecture
 
 ```
 OpenGov-WaterPathogenDetection/
@@ -149,30 +149,30 @@ OpenGov-WaterPathogenDetection/
 └── data/                         # Database files
 ```
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👥 Authors
+## Authors
 
 **Nik Jois** - Lead Developer  
 Email: nikjois@llamasearch.ai  
 Organization: LlamaSearch AI
 
-## 🔗 Links
+## Links
 
 - **Repository**: https://github.com/llamasearchai/OpenGov-WaterPathogenDetection
 - **Issues**: https://github.com/llamasearchai/OpenGov-WaterPathogenDetection/issues
 - **Releases**: https://github.com/llamasearchai/OpenGov-WaterPathogenDetection/releases
 
-## ⭐ Star Us!
+## Star Us
 
 If you find this project useful, please consider giving it a star on GitHub!
 
 ---
 
-**Built with ❤️ for public health and water quality monitoring**
+Built with care for public health and water quality monitoring
